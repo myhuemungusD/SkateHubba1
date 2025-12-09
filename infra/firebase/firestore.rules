@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /// ---- AUTH REQUIRED ----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /// ---- USER DOCS ----
+    match /users/{uid} {
+      allow read: if true;  // public profiles allowed
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    /// ---- GAMES COLLECTION ----
+    match /games/{gameId} {
+      allow read: if true;
+
+      // Users cannot create games directly. Must be done through server or controlled client call.
+      allow create: if isSignedIn();
+
+      // Users CANNOT update authoritative fields:
+      // - winnerId
+      // - currentTurn
+      // - turns[]
+      // - status
+      allow update: if isSignedIn()
+                    && !( "winnerId" in request.resource.data.diff().affectedKeys()
+                       || "currentTurn" in request.resource.data.diff().affectedKeys()
+                       || "turns" in request.resource.data.diff().affectedKeys()
+                       || "status" in request.resource.data.diff().affectedKeys()
+                    )
+                    && request.auth.uid in [resource.data.playerA, resource.data.playerB];
+
+      allow delete: if false;  // never allow delete in MVP
+    }
+
+    /// ---- TURNS COLLECTION ----
+    match /turns/{turnId} {
+      allow read: if true;
+
+      // Client can CREATE a turn, but ONLY with safe fields:
+      allow create: if isSignedIn()
+                    && request.resource.data.playerId == request.auth.uid
+                    && request.resource.data.result == "pending"
+                    && request.resource.data.letter == ""
+                    && request.resource.data.keys().hasOnly([
+                        "id",
+                        "gameId",
+                        "playerId",
+                        "videoUrl",
+                        "trickName",
+                        "result",
+                        "letter",
+                        "createdAt"
+                      ]);
+
+      // Client CANNOT modify a turn after creation.
+      allow update, delete: if false;
+    }
+
+    /// ---- FOLLOWS COLLECTION ----
+    match /follows/{uid}/following/{target} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+  }
+}

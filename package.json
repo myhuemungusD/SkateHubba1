@@ -1,0 +1,21 @@
+{
+	"name": "skatehubba",
+	"private": true,
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"scripts": {
+		"dev:web": "turbo run dev --filter=web",
+		"dev:mobile": "turbo run dev --filter=mobile",
+		"dev:admin": "turbo run dev --filter=admin",
+		"dev": "turbo run dev"
+	},
+	"devDependencies": {
+		"turbo": "latest"
+	},
+	"dependencies": {
+		"firebase": "^12.6.0",
+		"zustand": "^5.0.9"
+	}
+}

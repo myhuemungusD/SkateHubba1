@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "ESNext",
+    "target": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@ui/*": ["packages/ui/*"],
+      "@engine/*": ["packages/skate-engine/*"],
+      "@db/*": ["packages/db/*"],
+      "@env/*": ["packages/env/*"],
+      "@types/*": ["packages/types/*"],
+      "@zora/*": ["packages/zora/*"],
+      "@hubba/*": ["packages/hubba-coin/*"],
+      "@utils/*": ["packages/utils/*"]
+    }
+  },
+  "include": ["apps", "packages"]
+}
