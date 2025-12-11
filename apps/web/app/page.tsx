@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { arrayUnion, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import AuthButton from "./components/AuthButton";
 import { auth } from "@utils/auth";
 import { firestore } from "@utils/firebaseClient";
@@ -11,12 +11,19 @@ import { createGame } from "./lib/gameService";
 import { useOpponentLookup } from "../hooks/useOpponentLookup";
 import { useUserSearch, UserProfile } from "../hooks/useUserSearch";
 
+type RecentOpponent = {
+  uid: string;
+  displayName?: string | null;
+  handle?: string | null;
+  photoURL?: string | null;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [opponentUid, setOpponentUid] = useState("");
-  const [recentOpponents, setRecentOpponents] = useState<string[]>([]);
+  const [recentOpponents, setRecentOpponents] = useState<RecentOpponent[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,12 +57,18 @@ export default function HomePage() {
         createdAt: Date.now(),
         stats: { wins: 0, losses: 0, streak: 0 },
         profileCompleted: false,
+        recentOpponents: [],
       });
+      setRecentOpponents([]);
     } else {
       const data = snap.data() as Record<string, unknown>;
       if (!data.displayNameLower && data.displayName) {
         await updateDoc(userRef, { displayNameLower: String(data.displayName).toLowerCase() });
       }
+       const recents = Array.isArray(data.recentOpponents)
+        ? (data.recentOpponents as RecentOpponent[])
+        : [];
+      setRecentOpponents(recents.slice(0, 5));
     }
   };
 
@@ -75,19 +88,37 @@ export default function HomePage() {
     }
   }, []);
 
-  const rememberOpponent = (uid: string, profile?: Partial<UserProfile>) => {
-    if (typeof window === "undefined") return;
+  const rememberOpponent = async (uid: string, profile?: Partial<UserProfile>) => {
     const trimmed = uid.trim();
     if (!trimmed) return;
-    const next = [
-      profile?.displayName ? `${profile.displayName}|${trimmed}` : trimmed,
-      ...recentOpponents.filter((u) => !u.endsWith(trimmed)),
-    ].slice(0, 5);
-    setRecentOpponents(next as string[]);
-    try {
-      window.localStorage.setItem("recentOpponents", JSON.stringify(next));
-    } catch {
-      // ignore
+    const newEntry: RecentOpponent = {
+      uid: trimmed,
+      displayName: profile?.displayName || trimmed,
+      handle: profile?.displayName ? profile.displayName.toLowerCase().replace(/\s+/g, "") : trimmed,
+      photoURL: profile?.photoURL || null,
+    };
+    const next = [newEntry, ...recentOpponents.filter((u) => u.uid !== trimmed)].slice(0, 5);
+    setRecentOpponents(next);
+
+    // Persist locally
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("recentOpponents", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+    }
+
+    // Persist to Firestore
+    if (currentUser) {
+      const userRef = doc(firestore, "users", currentUser.uid);
+      try {
+        await updateDoc(userRef, {
+          recentOpponents: arrayUnion(newEntry),
+        });
+      } catch (err) {
+        console.warn("Could not persist recent opponent", err);
+      }
     }
   };
 
@@ -230,14 +261,14 @@ export default function HomePage() {
             <div className="space-y-2">
               <p className="text-xs text-gray-500">Recent opponents</p>
               <div className="flex flex-wrap gap-2">
-                {recentOpponents.map((uid) => (
+                {recentOpponents.map((opp) => (
                   <button
-                    key={uid}
+                    key={opp.uid}
                     type="button"
-                    onClick={() => setOpponentUid(uid.split("|").pop() || "")}
+                    onClick={() => setOpponentUid(opp.uid)}
                     className="px-3 py-1 text-xs rounded border border-gray-700 text-gray-300 hover:border-[#39FF14]"
                   >
-                    {uid.includes("|") ? uid.split("|")[0] : uid}
+                    {opp.displayName || opp.uid}
                   </button>
                 ))}
               </div>

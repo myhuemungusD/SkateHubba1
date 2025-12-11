@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, limit, query, orderBy, startAt, endAt } from "firebase/firestore";
+import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { firestore } from "@utils/firebaseClient";
 
 export type UserProfile = {
@@ -26,9 +26,7 @@ export function useUserSearch(term: string) {
         const usersRef = collection(firestore, "users");
         const q = query(
           usersRef,
-          orderBy("displayNameLower"),
-          startAt(t),
-          endAt(t + "\uf8ff"),
+          where("searchableKeywords", "array-contains", t),
           limit(5)
         );
         const snap = await getDocs(q);

@@ -6,18 +6,20 @@
 		"apps/*",
 		"packages/*"
 	],
-	"scripts": {
-		"dev:web": "turbo run dev --filter=web",
-		"dev:mobile": "turbo run dev --filter=mobile",
-		"dev:admin": "turbo run dev --filter=admin",
-		"dev": "turbo run dev",
-		"test": "vitest run"
-	},
-	"devDependencies": {
-		"turbo": "latest",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.15"
-	},
+ "scripts": {
+    "dev:web": "turbo run dev --filter=web",
+    "dev:mobile": "turbo run dev --filter=mobile",
+    "dev:admin": "turbo run dev --filter=admin",
+    "dev": "turbo run dev",
+    "test": "vitest run",
+    "backfill:users": "node scripts/backfill-users.js"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15",
+    "firebase-admin": "^12.5.0"
+  },
 	"dependencies": {
 		"firebase": "^12.6.0",
 		"zustand": "^5.0.9"

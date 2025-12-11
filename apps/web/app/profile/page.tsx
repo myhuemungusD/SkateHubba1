@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { auth } from "@utils/auth";
 import { firestore } from "@utils/firebaseClient";
 import AuthButton from "../components/AuthButton";
+import { generateKeywords } from "../lib/searchUtils";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -45,9 +46,14 @@ export default function ProfilePage() {
 
     try {
       const userRef = doc(firestore, "users", user.uid);
+      const cleanName = username.trim();
+      const handle = cleanName.toLowerCase().replace(/\s+/g, "");
       await updateDoc(userRef, {
-        displayName: username.trim(),
-        displayNameLower: username.trim().toLowerCase(),
+        displayName: cleanName,
+        displayNameLower: cleanName.toLowerCase(),
+        handle,
+        searchableKeywords: generateKeywords(cleanName),
+        lastActive: serverTimestamp(),
         profileCompleted: true,
       });
       setMessage("Profile updated successfully! Redirecting...");

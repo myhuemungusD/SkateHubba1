@@ -7,6 +7,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@utils/auth";
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { firestore } from "@utils/firebaseClient";
+import { generateKeywords } from "../lib/searchUtils";
 
 export default function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
@@ -23,11 +24,15 @@ export default function AuthButton() {
           const userSnap = await getDoc(userRef);
           
           if (!userSnap.exists()) {
+            const displayName = currentUser.displayName || `Guest-${currentUser.uid.substring(0, 4)}`;
+            const handle = displayName.toLowerCase().replace(/\s+/g, "");
             await setDoc(userRef, {
               uid: currentUser.uid,
               email: currentUser.email,
-              displayName: currentUser.displayName || `Guest-${currentUser.uid.substring(0, 4)}`,
-              displayNameLower: (currentUser.displayName || `Guest-${currentUser.uid.substring(0, 4)}`).toLowerCase(),
+              displayName,
+              displayNameLower: displayName.toLowerCase(),
+              handle,
+              searchableKeywords: generateKeywords(displayName),
               photoURL: currentUser.photoURL,
               createdAt: Date.now(),
               stats: { wins: 0, losses: 0, streak: 0 },
@@ -43,6 +48,8 @@ export default function AuthButton() {
             if (!userData.displayNameLower && userData.displayName) {
               await updateDoc(userRef, {
                 displayNameLower: String(userData.displayName).toLowerCase(),
+                handle: String(userData.displayName).toLowerCase().replace(/\s+/g, ""),
+                searchableKeywords: generateKeywords(String(userData.displayName)),
               });
             }
             if (!userData.profileCompleted && window.location.pathname !== "/profile") {
