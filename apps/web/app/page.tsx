@@ -7,6 +7,7 @@ import AuthButton from "./components/AuthButton";
 import { auth } from "@utils/auth";
 import { createGame } from "./lib/gameService";
 import { useOpponentLookup } from "../hooks/useOpponentLookup";
+import { useUserSearch, UserProfile } from "../hooks/useUserSearch";
 
 export default function HomePage() {
   const router = useRouter();
@@ -16,8 +17,10 @@ export default function HomePage() {
   const [recentOpponents, setRecentOpponents] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   
   const { opponentName, opponentChecking } = useOpponentLookup(opponentUid);
+  const { results: searchResults, loading: searchLoading } = useUserSearch(searchTerm);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -43,12 +46,15 @@ export default function HomePage() {
     }
   }, []);
 
-  const rememberOpponent = (uid: string) => {
+  const rememberOpponent = (uid: string, profile?: Partial<UserProfile>) => {
     if (typeof window === "undefined") return;
     const trimmed = uid.trim();
     if (!trimmed) return;
-    const next = [trimmed, ...recentOpponents.filter((u) => u !== trimmed)].slice(0, 5);
-    setRecentOpponents(next);
+    const next = [
+      profile?.displayName ? `${profile.displayName}|${trimmed}` : trimmed,
+      ...recentOpponents.filter((u) => !u.endsWith(trimmed)),
+    ].slice(0, 5);
+    setRecentOpponents(next as string[]);
     try {
       window.localStorage.setItem("recentOpponents", JSON.stringify(next));
     } catch {
@@ -80,7 +86,7 @@ export default function HomePage() {
     setError(null);
     try {
       const gameId = await createGame(currentUser.uid, trimmedOpponent);
-      rememberOpponent(trimmedOpponent);
+      rememberOpponent(trimmedOpponent, { displayName: opponentName || trimmedOpponent });
       router.push(`/game/${gameId}`);
     } catch (err) {
       console.error("Failed to create game", err);
@@ -133,6 +139,43 @@ export default function HomePage() {
         </div>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              Search by name
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Type a skater name..."
+                className="mt-2 w-full bg-black border border-gray-700 rounded px-4 py-3 text-white focus:border-[#39FF14] outline-none"
+              />
+            </label>
+            {searchTerm && (
+              <div className="bg-black border border-gray-800 rounded p-2 space-y-1">
+                {searchLoading ? (
+                  <div className="text-xs text-gray-500">Searching...</div>
+                ) : searchResults.length === 0 ? (
+                  <div className="text-xs text-gray-500">No users found.</div>
+                ) : (
+                  searchResults.map((user) => (
+                    <button
+                      key={user.uid}
+                      type="button"
+                      onClick={() => {
+                        setOpponentUid(user.uid);
+                        setSearchTerm("");
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-900 rounded"
+                    >
+                      <span className="text-sm text-white">{user.displayName || user.uid}</span>
+                      <span className="text-xs text-gray-500">{user.uid.slice(0, 6)}...</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           <label className="block text-sm font-medium text-gray-300">
             Opponent UID
             <input
@@ -162,10 +205,10 @@ export default function HomePage() {
                   <button
                     key={uid}
                     type="button"
-                    onClick={() => setOpponentUid(uid)}
+                    onClick={() => setOpponentUid(uid.split("|").pop() || "")}
                     className="px-3 py-1 text-xs rounded border border-gray-700 text-gray-300 hover:border-[#39FF14]"
                   >
-                    {uid}
+                    {uid.includes("|") ? uid.split("|")[0] : uid}
                   </button>
                 ))}
               </div>
@@ -185,6 +228,23 @@ export default function HomePage() {
           >
             {currentUser ? (submitting ? "Creating..." : "Start Game") : "Sign in to start"}
           </button>
+
+          {currentUser && (
+            <div className="text-xs text-gray-500 mt-2">
+              Share your invite link:{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    navigator.clipboard.writeText(`${window.location.origin}/challenge/${currentUser.uid}`);
+                  }
+                }}
+                className="text-[#39FF14] underline hover:text-[#32cc12]"
+              >
+                Copy /challenge/{currentUser.uid}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

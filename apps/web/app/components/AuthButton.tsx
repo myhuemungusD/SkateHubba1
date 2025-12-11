@@ -17,30 +17,35 @@ export default function AuthButton() {
       setUser(currentUser);
       
       if (currentUser) {
-        // Check if user profile exists, if not create it
-        const userRef = doc(firestore, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            uid: currentUser.uid,
-            email: currentUser.email,
-            displayName: currentUser.displayName || `Guest-${currentUser.uid.substring(0, 4)}`,
-            photoURL: currentUser.photoURL,
-            createdAt: Date.now(),
-            stats: { wins: 0, losses: 0, streak: 0 },
-            profileCompleted: false
-          });
-          // Redirect new users to profile page to set their username
-          if (window.location.pathname !== "/profile") {
-            window.location.href = "/profile";
+        try {
+          // Check if user profile exists, if not create it
+          const userRef = doc(firestore, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              displayName: currentUser.displayName || `Guest-${currentUser.uid.substring(0, 4)}`,
+              displayNameLower: (currentUser.displayName || `Guest-${currentUser.uid.substring(0, 4)}`).toLowerCase(),
+              photoURL: currentUser.photoURL,
+              createdAt: Date.now(),
+              stats: { wins: 0, losses: 0, streak: 0 },
+              profileCompleted: false
+            });
+            // Redirect new users to profile page to set their username
+            if (window.location.pathname !== "/profile") {
+              window.location.href = "/profile";
+            }
+          } else {
+            // Check if profile is completed (has custom username)
+            const userData = userSnap.data();
+            if (!userData.profileCompleted && window.location.pathname !== "/profile") {
+              window.location.href = "/profile";
+            }
           }
-        } else {
-          // Check if profile is completed (has custom username)
-          const userData = userSnap.data();
-          if (!userData.profileCompleted && window.location.pathname !== "/profile") {
-            window.location.href = "/profile";
-          }
+        } catch (error) {
+          console.error("Error managing user profile:", error);
         }
       }
       setLoading(false);
