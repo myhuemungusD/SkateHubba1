@@ -25,7 +25,14 @@ export default function CreateGamePage() {
   }, [router]);
 
   const handleCreate = async () => {
-    if (!user || !opponentId.trim()) return;
+    if (!user || !opponentId.trim()) {
+      setError("Opponent UID is required");
+      return;
+    }
+    if (opponentId.trim() === user.uid) {
+      setError("You cannot challenge yourself");
+      return;
+    }
     
     setLoading(true);
     setError("");

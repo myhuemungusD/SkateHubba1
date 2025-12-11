@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { signInGoogle, signInGuest, logout } from "@utils/auth";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@utils/auth";
@@ -58,7 +59,13 @@ export default function AuthButton() {
             <p className="text-xs text-gray-500">UID: {user.uid.substring(0, 6)}...</p>
           </div>
           {user.photoURL ? (
-            <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full border border-[#333]" />
+            <Image
+              src={user.photoURL}
+              alt="Profile"
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-full border border-[#333] object-cover"
+            />
           ) : (
             <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-bold text-gray-400">
               {user.displayName?.[0] || "G"}

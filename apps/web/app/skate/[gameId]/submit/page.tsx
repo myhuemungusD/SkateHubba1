@@ -6,6 +6,15 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@utils/auth";
 import { startRoundByAttacker } from "../../../lib/gameService";
 
+const isValidHttpUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 export default function SubmitTrickPage() {
   const router = useRouter();
   const params = useParams();
@@ -28,7 +37,14 @@ export default function SubmitTrickPage() {
   }, [router]);
 
   const handleSubmit = async () => {
-    if (!user || !videoUrl.trim()) return;
+    if (!user || !videoUrl.trim()) {
+      setError("Video URL is required");
+      return;
+    }
+    if (!isValidHttpUrl(videoUrl.trim())) {
+      setError("Enter a valid http/https URL");
+      return;
+    }
     
     setLoading(true);
     setError("");

@@ -2,81 +2,144 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /// ---- HELPERS ----
+    // ------------ Helpers ------------
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isGameParticipant(data) {
+    function isPlayer(game) {
       return isSignedIn() &&
-        (request.auth.uid == data.challengerId ||
-         request.auth.uid == data.defenderId);
+        game.players.size() == 2 &&
+        (request.auth.uid == game.players[0] || request.auth.uid == game.players[1]);
     }
 
-    function canUpdateGameStatus(before, after) {
-      // Only allow status changes from PENDING_ACCEPT to ACTIVE or DECLINED
-      // and only by the defender.
-      return isSignedIn()
-        && request.auth.uid == before.defenderId
-        && before.status == "PENDING_ACCEPT"
-        && (
-          after.status == "ACTIVE" ||
-          after.status == "DECLINED"
-        );
+    function lettersValid(state) {
+      return state.p1Letters >= 0 && state.p1Letters <= 5 &&
+             state.p2Letters >= 0 && state.p2Letters <= 5;
     }
 
-    function isValidNewGame(data) {
-      // Enforce initial state for new game documents
-      return data.status == "PENDING_ACCEPT"
-        && !("winnerId" in data)
-        && !("finishedAt" in data)
-        && data.currentTurn == "CHALLENGER"
-        && data.lettersWord == "SKATE"
-        && data.challengerLetters == ""
-        && data.defenderLetters == "";
+    function isNewGame(data) {
+      return data.players.size() == 2 &&
+        data.players[0] == request.auth.uid &&
+        data.players[0] != data.players[1] &&
+        data.roundsCount == 0 &&
+        (!("openRoundId" in data) || data.openRoundId == null) &&
+        data.state.status == "PENDING_ACCEPT" &&
+        data.state.turn == data.players[0] &&
+        data.state.p1Letters == 0 &&
+        data.state.p2Letters == 0 &&
+        lettersValid(data.state);
     }
 
-    /// ---- USER DOCS ----
+    function canAccept(before, after) {
+      return request.auth.uid == before.players[1] &&
+        before.state.status == "PENDING_ACCEPT" &&
+        after.state.status == "ACTIVE" &&
+        before.players == after.players &&
+        before.state.p1Letters == after.state.p1Letters &&
+        before.state.p2Letters == after.state.p2Letters &&
+        before.state.turn == after.state.turn &&
+        (!("openRoundId" in before) || before.openRoundId == after.openRoundId);
+    }
+
+    function canDecline(before, after) {
+      return isPlayer(before) &&
+        before.state.status == "PENDING_ACCEPT" &&
+        after.state.status == "DECLINED" &&
+        before.players == after.players &&
+        before.state.p1Letters == after.state.p1Letters &&
+        before.state.p2Letters == after.state.p2Letters &&
+        before.state.turn == after.state.turn &&
+        (!("openRoundId" in before) || before.openRoundId == after.openRoundId);
+    }
+
+    function lettersAdvanceValid(before, after) {
+      let diff1 = after.state.p1Letters - before.state.p1Letters;
+      let diff2 = after.state.p2Letters - before.state.p2Letters;
+      return diff1 >= 0 && diff2 >= 0 && diff1 <= 1 && diff2 <= 1 && (diff1 + diff2) <= 1;
+    }
+
+    function canSetTrickUpdate(before, after) {
+      return before.state.status == "ACTIVE" &&
+        after.state.status == "ACTIVE" &&
+        before.state.turn == request.auth.uid &&
+        before.openRoundId == null &&
+        after.openRoundId is string &&
+        after.roundsCount == before.roundsCount + 1 &&
+        before.players == after.players &&
+        before.state.turn == after.state.turn &&
+        before.state.p1Letters == after.state.p1Letters &&
+        before.state.p2Letters == after.state.p2Letters;
+    }
+
+    function winnerConsistent(after) {
+      return (after.state.p1Letters == 5 && after.winnerId == after.players[1]) ||
+             (after.state.p2Letters == 5 && after.winnerId == after.players[0]);
+    }
+
+    function canReplyGameUpdate(before, after) {
+      let statusOk = (after.state.status == "ACTIVE") ||
+        (after.state.status == "COMPLETED" && after.state.turn == null && winnerConsistent(after));
+      return before.state.status == "ACTIVE" &&
+        after.openRoundId == null &&
+        before.openRoundId != null &&
+        statusOk &&
+        lettersValid(after.state) &&
+        lettersAdvanceValid(before, after) &&
+        before.players == after.players;
+    }
+
+    // ------------ Users ------------
     match /users/{uid} {
-      allow read: if true;  // public profiles allowed
+      allow read: if true;
       allow write: if isSignedIn() && request.auth.uid == uid;
     }
 
-    /// ---- GAMES COLLECTION ----
+    // ------------ Games ------------
     match /games/{gameId} {
-      allow read: if isGameParticipant(resource.data);
+      allow read: if isPlayer(resource.data);
 
-      allow create: if isSignedIn()
-        && request.resource.data.challengerId == request.auth.uid
-        && isValidNewGame(request.resource.data);
+      allow create: if isSignedIn() && isNewGame(request.resource.data);
 
-      allow update: if isGameParticipant(resource.data)
-        && (
-          // Either status is NOT being changed at all...
-          !("status" in request.resource.data.diff().affectedKeys())
-          // ...or we are explicitly allowed to change it via Accept/Decline
-          || canUpdateGameStatus(resource.data, request.resource.data)
-        );
+      allow update: if isPlayer(resource.data) && (
+        canAccept(resource.data, request.resource.data) ||
+        canDecline(resource.data, request.resource.data) ||
+        canSetTrickUpdate(resource.data, request.resource.data) ||
+        canReplyGameUpdate(resource.data, request.resource.data)
+      );
 
       allow delete: if false;
     }
 
-    /// ---- ROUNDS COLLECTION ----
-    match /rounds/{roundId} {
-      allow read: if true; // Or restrict to participants if you prefer
+    // ------------ Rounds ------------
+    match /games/{gameId}/rounds/{roundId} {
+      function parentGame() {
+        return get(/databases/$(database)/documents/games/$(gameId)).data;
+      }
 
-      // Allow creation of rounds (setting a trick)
-      allow create: if isSignedIn()
-        && request.resource.data.attackerId == request.auth.uid;
-        
-      // Allow updates (defender replying)
-      allow update: if isSignedIn();
-    }
-    
-    /// ---- TURNS COLLECTION (Legacy/Deprecated?) ----
-    match /turns/{turnId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read: if isPlayer(parentGame());
+
+      allow create: if isSignedIn() &&
+        isPlayer(parentGame()) &&
+        parentGame().state.status == "ACTIVE" &&
+        parentGame().state.turn == request.auth.uid &&
+        parentGame().openRoundId == null &&
+        request.resource.data.attackerId == request.auth.uid &&
+        request.resource.data.defenderId != request.auth.uid &&
+        (request.resource.data.defenderId == parentGame().players[0] ||
+         request.resource.data.defenderId == parentGame().players[1]) &&
+        request.resource.data.status == "AWAITING_DEFENDER" &&
+        request.resource.data.defenderResult == "PENDING" &&
+        request.resource.data.index == parentGame().roundsCount + 1;
+
+      allow update: if isSignedIn() &&
+        isPlayer(parentGame()) &&
+        resource.data.status == "AWAITING_DEFENDER" &&
+        request.resource.data.status == "COMPLETE" &&
+        request.auth.uid == resource.data.defenderId &&
+        request.resource.data.defenderResult in ["MAKE", "BAIL", "TIMEOUT"];
+
+      allow delete: if false;
     }
   }
 }

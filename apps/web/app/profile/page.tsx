@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { auth } from "@utils/auth";
 import { firestore } from "@utils/firebaseClient";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -24,7 +25,6 @@ export default function ProfilePage() {
       }
       setUser(currentUser);
 
-      // Fetch current profile data
       const userRef = doc(firestore, "users", currentUser.uid);
       const userSnap = await getDoc(userRef);
       
@@ -51,7 +51,6 @@ export default function ProfilePage() {
       });
       setMessage("Profile updated successfully! Redirecting...");
       
-      // Redirect to home after successful save
       setTimeout(() => {
         router.push("/");
       }, 1500);
@@ -79,10 +78,16 @@ export default function ProfilePage() {
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
           <div className="flex justify-center mb-6">
             {user?.photoURL ? (
-              <img src={user.photoURL} alt="Profile" className="w-24 h-24 rounded-full border-2 border-[#39FF14]" />
+              <Image
+                src={user.photoURL}
+                alt="Profile"
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-full border-2 border-[#39FF14] object-cover"
+              />
             ) : (
               <div className="w-24 h-24 rounded-full bg-gray-800 border-2 border-gray-700 flex items-center justify-center text-2xl">
-                👤
+                ?
               </div>
             )}
           </div>
@@ -117,15 +122,6 @@ export default function ProfilePage() {
               {saving ? "Saving..." : "Save Profile"}
             </button>
           </form>
-        </div>
-        
-        <div className="mt-6 text-center">
-          <button 
-            onClick={() => router.push("/")}
-            className="text-gray-500 hover:text-white text-sm underline"
-          >
-            &larr; Back to Home
-          </button>
         </div>
       </div>
     </div>
