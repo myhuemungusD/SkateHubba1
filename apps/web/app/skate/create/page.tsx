@@ -1,36 +1,3 @@
-🔥 COPILOT PROMPT — Build SKATE “New Game” Page (Next.js + Firestore)
-/// GOAL:
-/// Create the "Start New SKATE Game" page for SkateHubba Web.
-///
-/// LOCATION:
-/// apps/web/app/skate/create/page.tsx
-///
-/// REQUIREMENTS:
-/// - User enters opponent handle or UID
-/// - On "Start Game", call createGame() from @skatehubba/skate-engine
-/// - Then write the Game document to Firestore
-/// - Then redirect to /skate/[gameId]
-/// - Minimal UI (SkateHubba H1 theme: black background, neon green, orange button)
-///
-/// UI BEHAVIOR:
-/// - Input: opponentId (string)
-/// - Button: "Start Game"
-/// - Disabled if no input or user not logged in
-///
-/// IMPORTS:
-/// import { createGame } from "@skatehubba/skate-engine";
-/// import { auth } from "@utils/auth";
-/// import { doc, setDoc } from "firebase/firestore";
-/// import { firestore } from "@utils/firebaseClient";
-///
-/// RULES:
-/// - No placeholder variables.
-/// - Use "use client";
-/// - Redirect with window.location.href after creation.
-///
-/// OUTPUT:
-/// A complete, functional page that creates a new game.
-
 "use client";
 
 import { useState, useEffect } from "react";

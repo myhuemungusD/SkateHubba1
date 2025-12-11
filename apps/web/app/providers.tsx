@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useUserStore } from "@engine/state/userStore";
+import { useUserStore } from "../../../packages/skate-engine/state/userStore";
 import { listenToAuth } from "@utils/auth";
 
 export function AppProviders({ children }: { children: ReactNode }) {

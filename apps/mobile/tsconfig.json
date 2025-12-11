@@ -1,6 +1,23 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ui/*": ["../../packages/ui/*"],
+      "@skatehubba/skate-engine": ["../../packages/skate-engine/index.ts"],
+      "@db/*": ["../../packages/db/*"],
+      "@env/*": ["../../packages/env/*"],
+      "@types/*": ["../../packages/types/*"],
+      "@skatehubba/types": ["../../packages/types/skate.ts"],
+      "@zora/*": ["../../packages/zora/*"],
+      "@hubba/*": ["../../packages/hubba-coin/*"],
+      "@utils/*": ["../../packages/utils/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../../packages/**/*"
+  ]
 }

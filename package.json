@@ -9,12 +9,15 @@
 		"dev:web": "turbo run dev --filter=web",
 		"dev:mobile": "turbo run dev --filter=mobile",
 		"dev:admin": "turbo run dev --filter=admin",
-		"dev": "turbo run dev"
+		"dev": "turbo run dev",
+		"test": "vitest run"
 	},
 	"devDependencies": {
-		"turbo": "latest"
+		"turbo": "latest",
+		"vitest": "^4.0.15"
 	},
 	"dependencies": {
+		"drizzle-orm": "^0.45.1",
 		"firebase": "^12.6.0",
 		"zustand": "^5.0.9"
 	}

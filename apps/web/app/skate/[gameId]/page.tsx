@@ -50,7 +50,7 @@ import { doc, onSnapshot, collection, query, where, orderBy } from "firebase/fir
 import { firestore } from "@utils/firebaseClient";
 import { auth } from "@utils/auth";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { Game, Turn } from "@types/skate"; // Using @types/skate based on tsconfig
+import { Game, Turn } from "../../../../../packages/types/skate";
 
 export default function GamePage() {
   const params = useParams();

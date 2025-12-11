@@ -17,17 +17,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": {
-      "@ui/*": ["../../packages/ui/*"],
-      "@skatehubba/skate-engine": ["../../packages/skate-engine/index.ts"],
-      "@db/*": ["../../packages/db/*"],
-      "@env/*": ["../../packages/env/*"],
-      "@types/*": ["../../packages/types/*"],
-      "@zora/*": ["../../packages/zora/*"],
-      "@hubba/*": ["../../packages/hubba-coin/*"],
-      "@utils/*": ["../../packages/utils/*"]
-    },
     "plugins": [
       {
         "name": "next"
@@ -40,8 +29,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "**/*.ts",
-    "**/*.tsx",
-    "../../packages/**/*"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"
