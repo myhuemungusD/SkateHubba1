@@ -8,6 +8,7 @@ import AuthButton from "./components/AuthButton";
 import { auth } from "@utils/auth";
 import { firestore } from "@utils/firebaseClient";
 import { createGame } from "./lib/gameService";
+import { useOpponentLookup } from "../hooks/useOpponentLookup";
 
 export default function HomePage() {
   const router = useRouter();
@@ -16,8 +17,8 @@ export default function HomePage() {
   const [opponentUid, setOpponentUid] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [opponentName, setOpponentName] = useState<string | null>(null);
-  const [opponentChecking, setOpponentChecking] = useState(false);
+  
+  const { opponentName, opponentChecking } = useOpponentLookup(opponentUid);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -26,37 +27,6 @@ export default function HomePage() {
     });
     return () => unsubscribe();
   }, []);
-
-  // Resolve opponent display name for confirmation
-  useEffect(() => {
-    const uid = opponentUid.trim();
-    if (!uid) {
-      setOpponentName(null);
-      return;
-    }
-    let cancelled = false;
-    const run = async () => {
-      setOpponentChecking(true);
-      setOpponentName(null);
-      try {
-        const snap = await getDoc(doc(firestore, "users", uid));
-        if (cancelled) return;
-        if (snap.exists()) {
-          setOpponentName(snap.data().displayName || uid);
-        } else {
-          setOpponentName(null);
-        }
-      } catch {
-        if (!cancelled) setOpponentName(null);
-      } finally {
-        if (!cancelled) setOpponentChecking(false);
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [opponentUid]);
 
   const canCreate = useMemo(
     () => !!currentUser && !!opponentUid.trim() && opponentUid.trim() !== currentUser?.uid,

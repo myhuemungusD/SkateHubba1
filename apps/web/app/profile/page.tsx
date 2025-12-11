@@ -104,9 +104,13 @@ export default function ProfilePage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                maxLength={20}
                 className="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-[#39FF14] outline-none"
                 placeholder="Enter your skater name"
               />
+              <p className="text-xs text-gray-600 mt-1 text-right">
+                {username.length}/20
+              </p>
             </div>
 
             {message && (
@@ -121,11 +125,11 @@ export default function ProfilePage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !username.trim()}
               className={`w-full py-3 rounded font-bold uppercase tracking-widest transition-all
                 ${
-                  saving
-                    ? "bg-gray-700 text-gray-500 cursor-wait"
+                  saving || !username.trim()
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                     : "bg-[#39FF14] text-black hover:bg-[#32cc12]"
                 }`}
             >
