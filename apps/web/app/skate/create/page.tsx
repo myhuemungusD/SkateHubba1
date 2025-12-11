@@ -6,12 +6,14 @@ import { auth } from "@utils/auth";
 import { doc, setDoc, collection } from "firebase/firestore";
 import { firestore } from "@utils/firebaseClient";
 import { onAuthStateChanged, User } from "firebase/auth";
+import AuthButton from "../../components/AuthButton";
 
 export default function CreateGamePage() {
   const [opponentId, setOpponentId] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -19,6 +21,14 @@ export default function CreateGamePage() {
     });
     return () => unsubscribe();
   }, []);
+
+  const copyToClipboard = () => {
+    if (currentUser) {
+      navigator.clipboard.writeText(currentUser.uid);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleCreateGame = async () => {
     if (!currentUser || !opponentId) return;
@@ -47,12 +57,33 @@ export default function CreateGamePage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4">
+        <AuthButton />
+      </div>
+
       <h1 className="text-4xl font-bold text-[#39FF14] mb-8 tracking-tighter">
         NEW SKATE GAME
       </h1>
 
       <div className="w-full max-w-md space-y-6">
+        {currentUser && (
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-400 mb-1">Your Player ID (Share this with friends)</p>
+            <div className="flex items-center gap-2">
+              <code className="bg-black px-2 py-1 rounded text-[#39FF14] flex-1 overflow-hidden text-ellipsis">
+                {currentUser.uid}
+              </code>
+              <button 
+                onClick={copyToClipboard}
+                className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-white transition-colors"
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div>
           <label htmlFor="opponent" className="block text-sm font-medium text-gray-400 mb-2">
             Opponent ID

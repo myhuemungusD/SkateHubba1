@@ -1,8 +1,13 @@
 import Link from "next/link";
+import AuthButton from "./components/AuthButton";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4">
+        <AuthButton />
+      </div>
+
       <main className="flex flex-col items-center gap-8 text-center">
         <h1 className="text-6xl font-bold text-[#39FF14] tracking-tighter">
           SKATEHUBBA
