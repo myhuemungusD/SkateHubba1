@@ -58,9 +58,18 @@ export default function AuthButton() {
     );
   }
 
+  const handleLogin = async () => {
+    try {
+      await signInGoogle();
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert(`Login failed: ${(error as Error).message}`);
+    }
+  };
+
   return (
     <button
-      onClick={() => signInGoogle()}
+      onClick={handleLogin}
       className="bg-white text-black font-bold py-2 px-4 rounded hover:bg-gray-200 transition-colors"
     >
       Sign In with Google
