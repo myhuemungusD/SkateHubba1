@@ -1,40 +1,22 @@
-export interface User {
-  uid: string;
-  handle: string;
-  avatarUrl: string;
-  fcmToken?: string;
-  stats: {
-    wins: number;
-    losses: number;
-    streak: number;
-  };
-}
+export type GameState = {
+  p1Letters: number; // 0..5
+  p2Letters: number; // 0..5
+  turn: string | null;
+  status: "PENDING_ACCEPT" | "ACTIVE" | "COMPLETED" | "DECLINED";
+};
 
-export type GameStatus = "PENDING_ACCEPT" | "ACTIVE" | "DECLINED" | "COMPLETED";
-export type GameVisibility = "PUBLIC" | "PRIVATE";
-export type PlayerRole = "CHALLENGER" | "DEFENDER";
-
-export interface Game {
+export type Game = {
   id: string;
-  challengerId: string;
-  defenderId: string;
-  status: GameStatus;
-  currentTurn: PlayerRole;
-  lettersWord: string; // e.g. "SKATE"
-  challengerLetters: string; // e.g. "SK"
-  defenderLetters: string; // e.g. ""
-  visibility: GameVisibility;
-  spotId?: string | null;
-  winnerId?: string;
-  rounds: string[]; // Array of roundIds
-  createdAt: number;
-  updatedAt: number;
-}
+  players: [string, string];
+  createdBy: string;
+  createdAt: any;       // Firestore Timestamp type
+  lastActionAt: any;
+  state: GameState;
+  winnerId?: string | null;
+  finishedAt?: any | null;
+};
 
-export type RoundStatus = "AWAITING_DEFENDER" | "COMPLETE" | "TIMEOUT";
-export type TrickResult = "MAKE" | "BAIL" | "PENDING" | "TIMEOUT";
-
-export interface Round {
+export type Round = {
   id: string;
   gameId: string;
   index: number;
@@ -42,14 +24,10 @@ export interface Round {
   defenderId: string;
   attackerVideoUrl: string;
   defenderVideoUrl?: string | null;
-  attackerResult: TrickResult;
-  defenderResult: TrickResult;
-  deadlineReplyAt: number;
-  status: RoundStatus;
-  createdAt: number;
-}
-
-export interface Follow {
-  followerId: string;
-  targetId: string;
-}
+  defenderResult: "PENDING" | "MAKE" | "BAIL" | "TIMEOUT";
+  deadlineReplyAt: any;
+  status: "AWAITING_DEFENDER" | "COMPLETE";
+  disputeStatus?: "NONE" | "OPEN" | "RESOLVED";
+  createdAt: any;
+  updatedAt: any;
+};

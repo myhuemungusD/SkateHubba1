@@ -42,8 +42,12 @@ export default function JoinGamePage() {
       snapshot.forEach((doc) => {
         gamesData.push({ id: doc.id, ...doc.data() } as Game);
       });
-      // Sort by updatedAt desc
-      gamesData.sort((a, b) => b.updatedAt - a.updatedAt);
+      // Sort by lastActionAt desc
+      gamesData.sort((a, b) => {
+        const timeA = a.lastActionAt?.toMillis ? a.lastActionAt.toMillis() : 0;
+        const timeB = b.lastActionAt?.toMillis ? b.lastActionAt.toMillis() : 0;
+        return timeB - timeA;
+      });
       setGames(gamesData);
       setLoading(false);
     }, (error) => {
@@ -56,10 +60,7 @@ export default function JoinGamePage() {
 
   const isMyTurn = (game: Game) => {
     if (!currentUser) return false;
-    return (
-      (game.currentTurn === "CHALLENGER" && currentUser.uid === game.challengerId) ||
-      (game.currentTurn === "DEFENDER" && currentUser.uid === game.defenderId)
-    );
+    return game.state.turn === currentUser.uid;
   };
 
   return (
@@ -121,7 +122,7 @@ export default function JoinGamePage() {
                         <div>
                           <p className="text-gray-400 text-xs mb-1">Game ID: {game.id.substring(0, 8)}...</p>
                           <p className="font-bold text-lg">
-                            vs {game.challengerId === currentUser.uid ? "Opponent" : "Opponent"}
+                            vs {game.players.find(id => id !== currentUser.uid) ? "Opponent" : "Opponent"}
                           </p>
                         </div>
                         <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase

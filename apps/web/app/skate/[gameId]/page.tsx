@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { doc, onSnapshot, collection, query, where, orderBy, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, orderBy } from "firebase/firestore";
 import { firestore } from "@utils/firebaseClient";
 import { auth } from "@utils/auth";
 import { onAuthStateChanged, User } from "firebase/auth";
 import type { Game, Round } from "@skatehubba/types";
 import AuthButton from "../../components/AuthButton";
+import { acceptGame, declineGame, startRoundByAttacker, submitDefenderReply } from "../../lib/gameService";
+import { computePrimaryAction, GamePrimaryAction } from "../../lib/gameActions";
+
+const getLetters = (count: number) => "SKATE".substring(0, count).split("").join(".") || "-";
 
 export default function GamePage() {
   const params = useParams();
@@ -49,8 +53,8 @@ export default function GamePage() {
   useEffect(() => {
     if (!gameId) return;
 
-    const roundsRef = collection(firestore, "rounds");
-    const q = query(roundsRef, where("gameId", "==", gameId), orderBy("index", "asc"));
+    const roundsRef = collection(firestore, "games", gameId, "rounds");
+    const q = query(roundsRef, orderBy("index", "asc"));
 
     const unsubscribeRounds = onSnapshot(q, (querySnap) => {
       const roundsData: Round[] = [];
@@ -67,11 +71,7 @@ export default function GamePage() {
     if (!game || !currentUser) return;
     setActionLoading(true);
     try {
-      const gameRef = doc(firestore, "games", game.id);
-      await updateDoc(gameRef, {
-        status: "ACTIVE",
-        updatedAt: Date.now()
-      });
+      await acceptGame(game.id, currentUser.uid);
     } catch (error) {
       console.error("Error accepting game:", error);
     } finally {
@@ -85,14 +85,44 @@ export default function GamePage() {
     
     setActionLoading(true);
     try {
-      const gameRef = doc(firestore, "games", game.id);
-      await updateDoc(gameRef, {
-        status: "DECLINED",
-        updatedAt: Date.now()
-      });
+      await declineGame(game.id, currentUser.uid);
       router.push("/");
     } catch (error) {
       console.error("Error declining game:", error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSetTrick = async () => {
+    if (!game || !currentUser) return;
+    const videoUrl = prompt("Enter video URL for your trick:");
+    if (!videoUrl) return;
+    
+    setActionLoading(true);
+    try {
+      await startRoundByAttacker(game.id, currentUser.uid, videoUrl);
+    } catch (error) {
+      console.error("Error setting trick:", error);
+      alert("Error setting trick");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReplyToTrick = async (roundId: string) => {
+    if (!game || !currentUser) return;
+    const videoUrl = prompt("Enter video URL for your reply:");
+    if (!videoUrl) return;
+    
+    const made = confirm("Did you make the trick? OK for Yes, Cancel for No");
+    
+    setActionLoading(true);
+    try {
+      await submitDefenderReply(game.id, roundId, currentUser.uid, videoUrl, made);
+    } catch (error) {
+      console.error("Error replying to trick:", error);
+      alert("Error replying to trick");
     } finally {
       setActionLoading(false);
     }
@@ -102,66 +132,13 @@ export default function GamePage() {
 
   if (!game) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Game not found</div>;
 
-  // PENDING ACCEPT STATE
-  if (game.status === "PENDING_ACCEPT") {
-    const isDefender = currentUser?.uid === game.defenderId;
-    const isChallenger = currentUser?.uid === game.challengerId;
+  const p1 = game.players[0];
+  const p2 = game.players[1];
+  const isP1 = currentUser?.uid === p1;
+  const isP2 = currentUser?.uid === p2;
+  
+  const action: GamePrimaryAction = currentUser ? computePrimaryAction(game, rounds, currentUser.uid) : { kind: "waiting" };
 
-    return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 relative">
-        <div className="absolute top-4 right-4">
-          <AuthButton />
-        </div>
-
-        <div className="max-w-md w-full text-center space-y-8">
-          <h1 className="text-4xl font-bold text-[#39FF14] tracking-tighter">GAME INVITE</h1>
-          
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-8">
-            <p className="text-gray-400 mb-4">CHALLENGER</p>
-            <div className="text-2xl font-bold mb-8">{game.challengerId === currentUser?.uid ? "You" : "Opponent"}</div>
-            
-            <div className="text-[#39FF14] text-xl font-bold mb-8">VS</div>
-            
-            <p className="text-gray-400 mb-4">DEFENDER</p>
-            <div className="text-2xl font-bold">{game.defenderId === currentUser?.uid ? "You" : "Opponent"}</div>
-          </div>
-
-          {isDefender && (
-            <div className="flex gap-4">
-              <button
-                onClick={handleDeclineGame}
-                disabled={actionLoading}
-                className="flex-1 py-4 rounded font-bold uppercase tracking-widest bg-red-900/20 text-red-500 border border-red-900 hover:bg-red-900/40 transition-all"
-              >
-                Decline
-              </button>
-              <button
-                onClick={handleAcceptGame}
-                disabled={actionLoading}
-                className="flex-1 py-4 rounded font-bold uppercase tracking-widest bg-[#39FF14] text-black hover:bg-[#32cc12] transition-all"
-              >
-                {actionLoading ? "..." : "Accept"}
-              </button>
-            </div>
-          )}
-
-          {isChallenger && (
-            <div className="text-gray-500 animate-pulse">
-              Waiting for opponent to accept...
-            </div>
-          )}
-          
-          {!isDefender && !isChallenger && (
-             <div className="text-gray-500">
-              This game is pending acceptance.
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ACTIVE GAME STATE
   return (
     <div className="min-h-screen bg-black text-white flex flex-col p-4 relative">
       <div className="absolute top-4 right-4">
@@ -173,9 +150,9 @@ export default function GamePage() {
         <div className="flex justify-between items-end mb-8 bg-gray-900 p-6 rounded-lg border border-gray-800">
           <div className="text-center">
             <p className="text-xs text-gray-500 mb-1">CHALLENGER</p>
-            <p className="font-bold text-lg mb-2">{game.challengerId === currentUser?.uid ? "YOU" : "OPP"}</p>
+            <p className="font-bold text-lg mb-2">{isP1 ? "YOU" : "OPP"}</p>
             <div className="text-3xl font-mono text-red-500 tracking-[0.5em]">
-              {game.challengerLetters || "-"}
+              {getLetters(game.state.p1Letters)}
             </div>
           </div>
           
@@ -185,36 +162,75 @@ export default function GamePage() {
 
           <div className="text-center">
             <p className="text-xs text-gray-500 mb-1">DEFENDER</p>
-            <p className="font-bold text-lg mb-2">{game.defenderId === currentUser?.uid ? "YOU" : "OPP"}</p>
+            <p className="font-bold text-lg mb-2">{isP2 ? "YOU" : "OPP"}</p>
             <div className="text-3xl font-mono text-red-500 tracking-[0.5em]">
-              {game.defenderLetters || "-"}
+              {getLetters(game.state.p2Letters)}
             </div>
           </div>
         </div>
 
         {/* Game Status / Action Area */}
         <div className="mb-8 text-center">
-          {game.status === "COMPLETED" ? (
-            <div className="bg-[#39FF14]/10 border border-[#39FF14] p-6 rounded-lg">
-              <h2 className="text-2xl font-bold text-[#39FF14] mb-2">GAME OVER</h2>
-              <p className="text-white">Winner: {game.winnerId === currentUser?.uid ? "YOU" : "OPPONENT"}</p>
-            </div>
-          ) : (
-            <div className="bg-gray-900 border border-gray-800 p-6 rounded-lg">
-              <p className="text-gray-400 mb-2">CURRENT TURN</p>
-              <h2 className="text-2xl font-bold text-white mb-4">
-                {game.currentTurn}
-              </h2>
-              
-              {/* Logic for buttons will go here (Set Trick / View Attempt) */}
-              <button 
-                className="bg-gray-800 text-gray-500 px-6 py-3 rounded font-bold cursor-not-allowed"
-                disabled
+          <div className="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+            <p className="text-gray-400 mb-4">STATUS</p>
+            
+            {action.kind === "acceptOrDecline" && (
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={handleAcceptGame}
+                  disabled={actionLoading}
+                  className="px-6 py-3 bg-[#39FF14] text-black font-bold rounded hover:bg-[#32cc12] transition-all"
+                >
+                  Accept Game
+                </button>
+                <button
+                  onClick={handleDeclineGame}
+                  disabled={actionLoading}
+                  className="px-6 py-3 bg-red-900/20 text-red-500 border border-red-900 font-bold rounded hover:bg-red-900/40 transition-all"
+                >
+                  Decline
+                </button>
+              </div>
+            )}
+
+            {action.kind === "setTrick" && (
+              <button
+                onClick={handleSetTrick}
+                disabled={actionLoading}
+                className="px-6 py-3 bg-orange-600 text-white font-bold rounded hover:bg-orange-700 transition-all"
               >
-                Waiting for turn...
+                Set Trick
               </button>
-            </div>
-          )}
+            )}
+
+            {action.kind === "replyToTrick" && (
+              <button
+                onClick={() => {
+                  if (action.kind === "replyToTrick") {
+                    handleReplyToTrick(action.round.id);
+                  }
+                }}
+                disabled={actionLoading}
+                className="px-6 py-3 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition-all"
+              >
+                Reply to Trick
+              </button>
+            )}
+
+            {action.kind === "waiting" && (
+              <div className="text-gray-500 animate-pulse">
+                Waiting for opponent...
+              </div>
+            )}
+
+            {action.kind === "completed" && (
+              <div className="text-lg font-bold">
+                {action.winnerId === currentUser?.uid
+                  ? <span className="text-[#39FF14]">YOU WON!</span>
+                  : <span className="text-red-500">YOU LOST!</span>}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Rounds History */}
@@ -226,11 +242,11 @@ export default function GamePage() {
             rounds.map((round) => (
               <div key={round.id} className="bg-gray-900 border border-gray-800 p-4 rounded flex justify-between items-center">
                 <div>
-                  <span className="text-[#39FF14] font-bold mr-4">R{round.index + 1}</span>
+                  <span className="text-[#39FF14] font-bold mr-4">R{round.index}</span>
                   <span className="text-gray-400">{round.status}</span>
                 </div>
                 <div className="text-sm">
-                  {round.attackerResult} vs {round.defenderResult}
+                  Attacker: MAKE vs Defender: {round.defenderResult}
                 </div>
               </div>
             ))
