@@ -1,48 +1,12 @@
-/// GOAL:
-/// Build the SkateHubba Home Feed screen for Expo.
-/// Shows all active games for the authenticated user,
-/// allows navigating into the Game View screen.
-///
-/// LOCATION:
-/// apps/mobile/src/screens/HomeScreen.tsx
-///
-/// REQUIREMENTS:
-/// - use React Native components (View, Text, ScrollView, TouchableOpacity)
-/// - Subscribe to games where playerA == uid OR playerB == uid
-/// - Show:
-///     • opponent UID
-///     • currentTurn indicator ("Your turn" vs "Their turn")
-///     • letters for each player
-/// - On press, navigate to GameScreen with gameId
-///
-/// THEME:
-/// - Black background
-/// - Neon green headers
-/// - Orange accents (buttons + highlights)
-///
-/// IMPORTS:
-/// import { useEffect, useState } from "react";
-/// import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-/// import { auth, firestore } from "@utils/firebaseClient";
-/// import { collection, query, where, onSnapshot } from "firebase/firestore";
-/// import { useNavigation } from "@react-navigation/native";
-/// import type { Game, Turn } from "@skatehubba/types";
-///
-/// RULES:
-/// - No placeholder data
-/// - No server components
-/// - Must handle empty list gracefully
-///
-/// OUTPUT:
-/// A complete, functional HomeScreen component.
-
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { auth, firestore } from "@utils/firebaseClient";
 import { collection, query, where, onSnapshot, or } from "firebase/firestore";
 import { useNavigation } from "@react-navigation/native";
 import type { Game } from "@skatehubba/types";
 import { onAuthStateChanged, User } from "firebase/auth";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -62,13 +26,8 @@ export default function HomeScreen() {
     if (!currentUser) return;
 
     const gamesRef = collection(firestore, "games");
-    // Query for games where user is playerA OR playerB
-    // Note: 'or' queries require a composite index in Firestore sometimes, 
-    // or multiple queries merged client-side. 
-    // For simplicity and standard Firestore usage, we'll use the 'or' operator if available in v9 modular SDK,
-    // or two listeners. The prompt implies a single subscription.
-    // Let's try the 'or' query which is supported in newer SDKs.
     
+    // Query for games where user is playerA OR playerB
     const q = query(
       gamesRef, 
       or(
@@ -80,9 +39,9 @@ export default function HomeScreen() {
     const unsubscribeGames = onSnapshot(q, (snapshot) => {
       const gamesData: Game[] = [];
       snapshot.forEach((doc) => {
-        gamesData.push(doc.data() as Game);
+        gamesData.push({ id: doc.id, ...doc.data() } as Game);
       });
-      // Sort by updatedAt desc locally since we can't easily do it in the OR query without complex indexes
+      // Sort by updatedAt desc locally
       gamesData.sort((a, b) => b.updatedAt - a.updatedAt);
       setGames(gamesData);
       setLoading(false);
@@ -95,7 +54,7 @@ export default function HomeScreen() {
   }, [currentUser]);
 
   const handleGamePress = (gameId: string) => {
-    navigation.navigate("GameScreen", { gameId });
+    navigation.navigate("Game", { gameId });
   };
 
   const getOpponentId = (game: Game) => {
@@ -120,18 +79,27 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar style="light" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>MY GAMES</Text>
+        <Text style={styles.headerTitle}>SKATEHUBBA</Text>
+        {currentUser && <Text style={styles.userHandle}>{currentUser.email || 'User'}</Text>}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {games.length === 0 ? (
+        <Text style={styles.sectionTitle}>YOUR GAMES</Text>
+        
+        {!currentUser ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Please sign in to view your games.</Text>
+          </View>
+        ) : games.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No active games found.</Text>
+            {/* Placeholder for create game button */}
             <TouchableOpacity 
               style={styles.createButton}
-              onPress={() => navigation.navigate("CreateGameScreen")}
+              // onPress={() => navigation.navigate("CreateGame")}
             >
               <Text style={styles.createButtonText}>START NEW GAME</Text>
             </TouchableOpacity>
@@ -149,7 +117,10 @@ export default function HomeScreen() {
                   styles.statusBadge, 
                   isMyTurn(game) ? styles.statusActive : styles.statusWaiting
                 ]}>
-                  <Text style={styles.statusText}>
+                  <Text style={[
+                    styles.statusText,
+                    isMyTurn(game) ? { color: '#000' } : { color: '#fff' }
+                  ]}>
                     {game.status === "finished" 
                       ? "FINISHED" 
                       : isMyTurn(game) ? "YOUR TURN" : "THEIR TURN"}
@@ -158,20 +129,13 @@ export default function HomeScreen() {
               </View>
               
               <View style={styles.scoreContainer}>
-                {/* Note: Letters would ideally come from the game doc if stored there, 
-                    or we'd need to fetch turns. For the Home Screen summary, 
-                    we might just show status or need a 'letters' field on Game in the future.
-                    For now, we'll omit specific letters to avoid N+1 queries here, 
-                    or assume they are added to Game type as per previous discussions.
-                    If not available, we just show the match.
-                */}
                 <Text style={styles.gameIdText}>Game ID: {game.id.substring(0, 8)}...</Text>
               </View>
             </TouchableOpacity>
           ))
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -181,23 +145,36 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#1a1a1a",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#39FF14",
     letterSpacing: -1,
+    fontFamily: 'monospace',
+  },
+  userHandle: {
+    color: '#888',
+    fontSize: 12,
   },
   scrollContent: {
     padding: 20,
   },
+  sectionTitle: {
+    color: '#fff',
+    fontSize: 18,
+    marginBottom: 15,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
   emptyState: {
-    marginTop: 100,
+    marginTop: 50,
     alignItems: "center",
   },
   emptyText: {
@@ -248,7 +225,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#333",
   },
   statusText: {
-    color: "#000",
     fontSize: 12,
     fontWeight: "bold",
     textTransform: "uppercase",
@@ -263,3 +239,4 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
   },
 });
+

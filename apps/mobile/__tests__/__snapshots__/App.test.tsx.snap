@@ -1,18 +1,15 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`<App /> Smoke Test renders correctly without crashing 1`] = `
-<View
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
   style={
-    {
-      "alignItems": "center",
-      "backgroundColor": "#fff",
-      "flex": 1,
-      "justifyContent": "center",
-    }
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
   }
->
-  <Text>
-    Open up App.tsx to start working on your app!
-  </Text>
-</View>
+/>
 `;
