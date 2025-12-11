@@ -46,12 +46,15 @@ export default function ProfilePage() {
     try {
       const userRef = doc(firestore, "users", user.uid);
       await updateDoc(userRef, {
-        displayName: username.trim()
+        displayName: username.trim(),
+        profileCompleted: true
       });
-      setMessage("Profile updated successfully!");
+      setMessage("Profile updated successfully! Redirecting...");
       
-      // Force reload to update AuthButton state if needed, or just let the user navigate
-      setTimeout(() => setMessage(""), 3000);
+      // Redirect to home after successful save
+      setTimeout(() => {
+        router.push("/");
+      }, 1500);
     } catch (error) {
       console.error("Error updating profile:", error);
       setMessage("Failed to update profile.");

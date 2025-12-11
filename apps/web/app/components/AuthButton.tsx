@@ -27,10 +27,19 @@ export default function AuthButton() {
             displayName: currentUser.displayName || "Skater",
             photoURL: currentUser.photoURL,
             createdAt: Date.now(),
-            stats: { wins: 0, losses: 0, streak: 0 }
+            stats: { wins: 0, losses: 0, streak: 0 },
+            profileCompleted: false
           });
           // Redirect new users to profile page to set their username
-          window.location.href = "/profile";
+          if (window.location.pathname !== "/profile") {
+            window.location.href = "/profile";
+          }
+        } else {
+          // Check if profile is completed (has custom username)
+          const userData = userSnap.data();
+          if (!userData.profileCompleted && window.location.pathname !== "/profile") {
+            window.location.href = "/profile";
+          }
         }
       }
       setLoading(false);
