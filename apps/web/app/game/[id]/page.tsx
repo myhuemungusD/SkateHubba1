@@ -85,6 +85,14 @@ export default function GamePage() {
     [rounds, currentUser]
   );
 
+  const openRound = useMemo(
+    () =>
+      (game?.openRoundId && rounds.find((r) => r.id === game.openRoundId)) ||
+      pendingReplyRound ||
+      null,
+    [game?.openRoundId, rounds, pendingReplyRound]
+  );
+
   const handleAccept = async () => {
     if (!game || !currentUser) return;
     setActionLoading(true);
@@ -200,7 +208,11 @@ export default function GamePage() {
         );
       }
 
-      return <p className="text-gray-500">Waiting for opponent…</p>;
+      return (
+        <p className="text-gray-500">
+          Waiting for opponent… {openRound ? "(reply pending)" : null}
+        </p>
+      );
     }
 
     if (game.state.status === "COMPLETED") {
@@ -285,6 +297,11 @@ export default function GamePage() {
           <p className="text-gray-600 text-sm">No rounds yet.</p>
         ) : (
           <div className="space-y-3">
+            {openRound && (
+              <div className="bg-yellow-900/20 border border-yellow-900 text-yellow-200 text-sm px-4 py-2 rounded">
+                Pending defender reply on round #{openRound.index}
+              </div>
+            )}
             {rounds.map((round) => (
               <div
                 key={round.id}
