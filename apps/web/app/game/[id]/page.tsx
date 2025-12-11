@@ -37,7 +37,10 @@ export default function GamePage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [formMode, setFormMode] = useState<"none" | "set" | "reply">("none");
   const [didMake, setDidMake] = useState(true);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [trickName, setTrickName] = useState("");
   const [actionMessage, setActionMessage] = useState<{ text: string; tone?: "info" | "error" } | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Auth subscription
   useEffect(() => {
@@ -406,7 +409,7 @@ export default function GamePage() {
               )}
               {actionMessage && (
                 <div className="text-sm text-yellow-200 bg-yellow-900/20 border border-yellow-900 rounded px-3 py-2">
-                  {actionMessage}
+                  {actionMessage.text}
                 </div>
               )}
               <button
