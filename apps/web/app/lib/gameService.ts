@@ -95,7 +95,8 @@ export async function declineGame(gameId: string, defenderId: string): Promise<v
 export async function startRoundByAttacker(
   gameId: string, 
   attackerId: string, 
-  videoUrl: string
+  videoUrl: string,
+  trickName?: string
 ): Promise<string> {
   const gameRef = doc(firestore, GAMES_COLLECTION, gameId);
   const roundId = uuidv4();
@@ -126,6 +127,7 @@ export async function startRoundByAttacker(
       attackerId,
       defenderId,
       attackerVideoUrl: videoUrl,
+      trickName: trickName || undefined,
       defenderResult: "PENDING",
       deadlineReplyAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000), // 24h
       status: "AWAITING_DEFENDER",

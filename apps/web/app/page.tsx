@@ -2,11 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
 import AuthButton from "./components/AuthButton";
 import { auth } from "@utils/auth";
-import { firestore } from "@utils/firebaseClient";
 import { createGame } from "./lib/gameService";
 import { useOpponentLookup } from "../hooks/useOpponentLookup";
 
@@ -75,6 +73,22 @@ export default function HomePage() {
         <div>
           <p className="text-sm text-gray-500">Play SKATE</p>
           <h1 className="text-3xl font-bold text-[#39FF14] tracking-tight">Start a New Game</h1>
+          {currentUser && (
+            <div className="mt-2 flex items-center gap-2">
+              <p className="text-xs text-gray-500 font-mono bg-gray-900 px-2 py-1 rounded border border-gray-800">
+                {currentUser.uid}
+              </p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(currentUser.uid);
+                  alert("UID copied to clipboard!");
+                }}
+                className="text-xs text-[#39FF14] hover:underline"
+              >
+                Copy UID
+              </button>
+            </div>
+          )}
         </div>
         <AuthButton />
       </div>

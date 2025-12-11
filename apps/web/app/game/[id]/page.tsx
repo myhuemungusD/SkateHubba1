@@ -45,8 +45,9 @@ export default function GamePage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [formMode, setFormMode] = useState<"none" | "set" | "reply">("none");
   const [videoUrl, setVideoUrl] = useState("");
+  const [trickName, setTrickName] = useState("");
   const [didMake, setDidMake] = useState(true);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ text: string; tone?: "info" | "error" } | null>(null);
 
   // Auth subscription
   useEffect(() => {
@@ -114,7 +115,7 @@ export default function GamePage() {
       await acceptGame(game.id, currentUser.uid);
     } catch (err) {
       console.error(err);
-      alert("Failed to accept.");
+      setActionMessage({ text: "Failed to accept. Please retry.", tone: "error" });
     } finally {
       setActionLoading(false);
     }
@@ -127,7 +128,7 @@ export default function GamePage() {
       await declineGame(game.id, currentUser.uid);
     } catch (err) {
       console.error(err);
-      alert("Failed to decline.");
+      setActionMessage({ text: "Failed to decline. Please retry.", tone: "error" });
     } finally {
       setActionLoading(false);
     }
@@ -136,6 +137,7 @@ export default function GamePage() {
   const resetForm = () => {
     setFormMode("none");
     setVideoUrl("");
+    setTrickName("");
     setDidMake(true);
   };
 
@@ -150,8 +152,8 @@ export default function GamePage() {
     setActionMessage(null);
     try {
       if (formMode === "set") {
-        await startRoundByAttacker(game.id, currentUser.uid, videoUrl.trim());
-        setActionMessage("Trick submitted.");
+        await startRoundByAttacker(game.id, currentUser.uid, videoUrl.trim(), trickName.trim());
+        setActionMessage({ text: "Trick submitted." });
       }
       if (formMode === "reply" && pendingReplyRound) {
         await submitDefenderReply(
@@ -161,12 +163,12 @@ export default function GamePage() {
           videoUrl.trim(),
           didMake
         );
-        setActionMessage("Reply submitted.");
+        setActionMessage({ text: "Reply submitted." });
       }
       resetForm();
     } catch (err) {
       console.error(err);
-      setActionMessage("Failed to submit. Please try again.");
+      setActionMessage({ text: "Failed to submit. Please try again.", tone: "error" });
     } finally {
       setActionLoading(false);
     }
@@ -270,8 +272,14 @@ export default function GamePage() {
   return (
     <div className="min-h-screen bg-black text-white p-6">
       {actionMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-gray-900 border border-gray-800 text-sm px-4 py-2 rounded shadow">
-          {actionMessage}
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 text-sm px-4 py-2 rounded shadow ${
+            actionMessage.tone === "error"
+              ? "bg-red-900/50 border border-red-900 text-red-200"
+              : "bg-gray-900 border border-gray-800 text-white"
+          }`}
+        >
+          {actionMessage.text}
         </div>
       )}
       <div className="flex items-center justify-between mb-8">
@@ -333,6 +341,17 @@ export default function GamePage() {
                   placeholder="https://example.com/clip.mp4"
                   className="w-full bg-black border border-gray-700 rounded px-3 py-2 text-white focus:border-[#39FF14] outline-none"
                 />
+                {formMode === "set" && (
+                  <div className="mt-2">
+                    <label className="text-xs text-gray-500">Trick Name (Optional)</label>
+                    <input
+                      value={trickName}
+                      onChange={(e) => setTrickName(e.target.value)}
+                      placeholder="e.g. Kickflip"
+                      className="w-full bg-black border border-gray-700 rounded px-3 py-2 text-white focus:border-[#39FF14] outline-none mt-1"
+                    />
+                  </div>
+                )}
                 {videoUrl && isValidHttpUrl(videoUrl.trim()) ? (
                   <div className="space-y-2">
                     <a

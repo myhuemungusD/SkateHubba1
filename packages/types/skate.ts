@@ -25,6 +25,7 @@ export type Round = {
   attackerId: string;
   defenderId: string;
   attackerVideoUrl: string;
+  trickName?: string;
   defenderVideoUrl?: string | null;
   defenderResult: "PENDING" | "MAKE" | "BAIL" | "TIMEOUT";
   deadlineReplyAt: any;
