@@ -38,7 +38,6 @@ export default function GamePage() {
   const [formMode, setFormMode] = useState<"none" | "set" | "reply">("none");
   const [didMake, setDidMake] = useState(true);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [trickName, setTrickName] = useState("");
   const [actionMessage, setActionMessage] = useState<{ text: string; tone?: "info" | "error" } | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -130,7 +129,6 @@ export default function GamePage() {
   const resetForm = () => {
     setFormMode("none");
     setVideoFile(null);
-    setTrickName("");
     setDidMake(true);
   };
 
@@ -157,7 +155,7 @@ export default function GamePage() {
       const downloadUrl = await getDownloadURL(fileRef);
 
       if (formMode === "set") {
-        await startRoundByAttacker(game.id, currentUser.uid, downloadUrl, trickName.trim());
+        await startRoundByAttacker(game.id, currentUser.uid, downloadUrl);
         setActionMessage({ text: "Trick submitted." });
       }
       if (formMode === "reply" && pendingReplyRound) {
@@ -408,16 +406,22 @@ export default function GamePage() {
                 </div>
               )}
               {actionMessage && (
-                <div className="text-sm text-yellow-200 bg-yellow-900/20 border border-yellow-900 rounded px-3 py-2">
+                <div
+                  className={`text-sm rounded px-3 py-2 ${
+                    actionMessage.tone === "error"
+                      ? "text-red-200 bg-red-900/30 border border-red-900"
+                      : "text-yellow-200 bg-yellow-900/20 border border-yellow-900"
+                  }`}
+                >
                   {actionMessage.text}
                 </div>
               )}
               <button
                 onClick={submitVideo}
-                disabled={actionLoading}
+                disabled={actionLoading || uploading}
                 className="w-full bg-[#39FF14] text-black font-bold py-2 rounded hover:bg-[#32cc12] disabled:opacity-50"
               >
-                {actionLoading ? "Submitting..." : "Submit"}
+                {uploading ? "Uploading..." : actionLoading ? "Submitting..." : "Submit"}
               </button>
             </div>
           )}
