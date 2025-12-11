@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import AuthButton from "./components/AuthButton";
 import { auth } from "@utils/auth";
+import { firestore } from "@utils/firebaseClient";
 import { createGame } from "./lib/gameService";
 import { useOpponentLookup } from "../hooks/useOpponentLookup";
 import { useUserSearch, UserProfile } from "../hooks/useUserSearch";
@@ -26,9 +28,36 @@ export default function HomePage() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setLoading(false);
+      if (user) {
+        ensureUserProfile(user).catch((err) => console.error("ensureUserProfile failed", err));
+      }
     });
     return () => unsubscribe();
   }, []);
+
+  const ensureUserProfile = async (user: User) => {
+    const userRef = doc(firestore, "users", user.uid);
+    const snap = await getDoc(userRef);
+    const displayName = user.displayName || `User-${user.uid.slice(0, 4)}`;
+    const displayNameLower = displayName.toLowerCase();
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: user.email,
+        displayName,
+        displayNameLower,
+        photoURL: user.photoURL ?? null,
+        createdAt: Date.now(),
+        stats: { wins: 0, losses: 0, streak: 0 },
+        profileCompleted: false,
+      });
+    } else {
+      const data = snap.data() as Record<string, unknown>;
+      if (!data.displayNameLower && data.displayName) {
+        await updateDoc(userRef, { displayNameLower: String(data.displayName).toLowerCase() });
+      }
+    }
+  };
 
   // Load recent opponents from localStorage
   useEffect(() => {
@@ -193,7 +222,7 @@ export default function HomePage() {
                 ? "Looking up opponent..."
                 : opponentName
                   ? `Challenging: ${opponentName}`
-                  : "No user found for this UID."}
+                  : "No profile found for this UID, but you can still start."}
             </div>
           ) : null}
 
