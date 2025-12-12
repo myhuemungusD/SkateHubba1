@@ -5,7 +5,7 @@ import { useState } from "react";
 export default function DevPanel() {
   const [result, setResult] = useState("");
 
-  async function call(name: string, body?: any) {
+  async function call(name: string, body?: unknown) {
     const res = await fetch(`/api/dev/${name}`, {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
