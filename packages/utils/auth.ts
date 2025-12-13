@@ -33,6 +33,9 @@ export const login = () => {
   window.location.href = `https://${domain}/authorize?${params.toString()}`;
 };
 
+// Preferred name used by the web app UI
+export const loginWithAuth0 = login;
+
 export const logout = () => {
   if (typeof window === "undefined") return;
 
