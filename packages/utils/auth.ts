@@ -7,6 +7,7 @@ export const listenToAuth = (callback: (user: any) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
+// Auth0 Universal Login entrypoint
 export const login = () => {
   if (typeof window === "undefined") return;
 
@@ -20,15 +21,16 @@ export const login = () => {
     return;
   }
 
-  const authorizeUrl = `https://${domain}/authorize?${new URLSearchParams({
+  const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
     redirect_uri: `${siteUrl}/auth/callback`,
     scope: "openid profile email",
     audience,
-  }).toString()}`;
+    state: window.location.pathname || "/",
+  });
 
-  window.location.href = authorizeUrl;
+  window.location.href = `https://${domain}/authorize?${params.toString()}`;
 };
 
 export const logout = () => {
@@ -43,12 +45,12 @@ export const logout = () => {
     return;
   }
 
-  const logoutUrl = `https://${domain}/v2/logout?${new URLSearchParams({
+  const params = new URLSearchParams({
     client_id: clientId,
     returnTo: siteUrl,
-  }).toString()}`;
+  });
 
-  window.location.href = logoutUrl;
+  window.location.href = `https://${domain}/v2/logout?${params.toString()}`;
 };
 
 export { auth };
