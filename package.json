@@ -15,10 +15,12 @@
     "backfill:users": "node scripts/backfill-users.js"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.15",
+    "firebase-admin": "^12.5.0",
     "turbo": "latest",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15",
-    "firebase-admin": "^12.5.0"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.0.15"
   },
 	"dependencies": {
 		"firebase": "^12.6.0",
