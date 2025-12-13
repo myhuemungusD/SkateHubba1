@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const auth0Domain = process.env.AUTH0_DOMAIN;
-    const auth0Audience = process.env.AUTH0_AUDIENCE;
+    const auth0Domain = process.env.AUTH0_DOMAIN ?? process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
+    const auth0Audience = process.env.AUTH0_AUDIENCE ?? process.env.NEXT_PUBLIC_AUTH0_AUDIENCE;
 
     if (!auth0Domain || !auth0Audience) {
       return NextResponse.json(

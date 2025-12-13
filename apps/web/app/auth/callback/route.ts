@@ -11,8 +11,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing Auth0 params" }, { status: 400 });
   }
 
-  const domain = process.env.AUTH0_DOMAIN;
-  const clientId = process.env.AUTH0_CLIENT_ID;
+  const domain = process.env.AUTH0_DOMAIN ?? process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
+  const clientId = process.env.AUTH0_CLIENT_ID ?? process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
   const clientSecret = process.env.AUTH0_CLIENT_SECRET;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? url.origin;
 
